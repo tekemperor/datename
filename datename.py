@@ -84,8 +84,8 @@ def getTimeObj(path, attribute, utc):
 def getTimeZone(utc):
 	if utc == "-l":
 		return time.strftime('%Z')
-    # UTC aka Zulu time following ISO 8601 12:00:00Z
-    return "Z"
+	# UTC aka Zulu time following ISO 8601 (e.g. 12:00:00Z)
+	return "Z"
 
 
 
