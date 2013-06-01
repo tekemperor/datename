@@ -110,12 +110,12 @@ def rename(pathFull, style, timeString):
         return
     pathDir = os.path.dirname(pathFull)
     pathFile = os.path.basename(pathFull)
-    fileName, fileExt = os.path.splitext(pathFile)[0]
+    fileName, fileExt = os.path.splitext(pathFile)
     fileSuffix = "_" + fileName + fileExt
     if style == "-R":
         fileSuffix = fileExt
     tempPath = os.path.join(pathDir, timeString + fileSuffix)
-    if renameSafe(pathFull, tempPath):
+    if safeRename(pathFull, tempPath):
         return
     renameIterative(pathFull, timeString, fileSuffix)
 
@@ -129,7 +129,7 @@ def renameIterative(pathFull, timeString, fileSuffix):
 
 def safeRename(oldPath, newPath):
     if (oldPath == newPath) or (not os.path.exists(newPath)):
-        os.rename(pathFull, tempPath)
+        os.rename(oldPath, newPath)
         return True
     return False
 
