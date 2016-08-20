@@ -62,7 +62,7 @@ class SafeMove:
         Rather than simply moving it, it checks if a file exists. Raises Exception instead of overwrite.
         Raises DestinationExistsError if the destination_path already exists.
         """
-        # Check same first, rename can raise errors unnecessarily..
+        # Check same first, rename can raise errors unnecessarily if source is destionation.
         if source_path == destination_path:
             return
         elif not os.path.exists(destination_path):
@@ -81,6 +81,6 @@ class DestinationExistsError(Exception):
     def __str__(self) :
         return repr(self.value)
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     thing = SafeMove()
     thing.move("this.txt","that.txt")
