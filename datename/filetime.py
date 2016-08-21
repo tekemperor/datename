@@ -1,16 +1,41 @@
 """This module is designed to build timestrings from file metadata.
 
+Everything is done in seconds since the unix epoch or UTC.
 Author: Brian Lindsay
 Author Email: tekemperor@gmail.com
 """
 import sys
-import getopt
 import os
 import datetime
 import time
-import safemove
 
-def __build_timestring(utc_timestamp, format='%Y%m%d%T%H%M%S%Z'):
+def __build_timestring(epoch_timestamp, format='%Y%m%d%T%H%M%S%Z'):
+def __get_epochtime(file, type="modified"):
+    """Get file metadata time in seconds since the unix epoch.
+    
+    Metadata time can be any of {'accessed','created','modified'}
+    Defaults to modified.
+    """
+    if type == accessed:
+        time_function = os.path.getatime
+    elif type == created:
+        time_function = os.path.getctime
+    elif type == modified:
+        time_function = os.path.getmtime
+    else:
+        raise InvalidMetadataTimeTypeError(type)
+    return time_function(file)
+
+
+class InvalidMetadataTimeTypeError(value):
+    """Invalid Metadata Time Type Error
+    Only {'accessed','created','modified'} are supported.
+    """
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+    
     
 def usage():
     print "Usage:"
@@ -105,18 +130,6 @@ def getTimeString(formatString, utc, path, attribute):
     timeObj = getTimeObj(path, attribute, utc)
     timeString = timeObj.strftime(formatString)
     return timeString
-
-def rename(pathFull, style, timeString):
-    if not os.path.isfile(pathFull):
-        return
-    pathDir = os.path.dirname(pathFull)
-    pathFile = os.path.basename(pathFull)
-    fileName, fileExt = os.path.splitext(pathFile)
-    fileSuffix = "_" + fileName + fileExt
-    if style == "-R":
-        fileSuffix = fileExt
-    tempPath = os.path.join(pathDir, timeString + fileSuffix)
-    safemove.move(pathFull, tempPath)
 
 if __name__ == "__main__":
     main()
