@@ -10,6 +10,7 @@ import getopt
 import os
 import datetime
 import time
+import safemove
 
 def usage():
     print "Usage:"
@@ -115,23 +116,7 @@ def rename(pathFull, style, timeString):
     if style == "-R":
         fileSuffix = fileExt
     tempPath = os.path.join(pathDir, timeString + fileSuffix)
-    if safeRename(pathFull, tempPath):
-        return
-    renameIterative(pathFull, timeString, fileSuffix)
-
-def renameIterative(pathFull, timeString, fileSuffix):
-    pathDir = os.path.dirname(pathFull)
-    timeString = timeString + "_"
-    for i in itertools.count(1):
-        tempPath = os.path.join(pathDir, timeString + str(i) + fileSuffix)
-        if safeRename(pathFull, tempPath):
-	    return
-
-def safeRename(oldPath, newPath):
-    if (oldPath == newPath) or (not os.path.exists(newPath)):
-        os.rename(oldPath, newPath)
-        return True
-    return False
+    safemove.move(pathFull, tempPath)
 
 if __name__ == "__main__":
     main()
