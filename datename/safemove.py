@@ -3,15 +3,14 @@
 There is only one class though.
 """
 
-import os.path
-import os.rename
+import os
+import sys
 
 class SafeMove:
     """This Class contains all the necessary functions to safely move files.
 
     There is only one function though.
     """
-
 
     def move (self, source, destination, itr_pre="_", itr_post="", itr_pad=0):
         """Try to move a file iteratively.
@@ -55,32 +54,45 @@ class SafeMove:
                 iterator += 1
     
         
-    def __attempt_move_safely (self, source_path, destination_path):
+    def __attempt_move_safely (self, source, destination):
         """Try to move file non-destructively.
 
-        Assumes source_path and destination_path point to files, not folders.
-        Rather than simply moving it, it checks if a file exists. Raises Exception instead of overwrite.
-        Raises DestinationExistsError if the destination_path already exists.
+        Assumes 'source' and 'destination' point to files, not folders.
+        Raises 'SourceDoesNotExistError' if 'source' does not exist.
+        Raises 'DestinationExistsError' if 'destination' already exists.
+        Note: The check for existing file and the move is not atomic.
         """
-        # Check same first, rename can raise errors unnecessarily if source is destionation.
-        if source_path == destination_path:
+        # Check same path, rename can raise errors if source is destionation.
+        if source == destination:
             return
-        elif not os.path.exists(destination_path):
-            os.rename(source_path, destination_path)
+        elif not os.path.exists(destination):
+            os.rename(source, destination)
         else:
-            raise DestinationExistsError(destination_path) 
+            # The path exists, this script WILL NOT OVERWRITE!
+            raise DestinationExistsError(destination) 
 
      
 class DestinationExistsError(Exception):
     """Destination Exists
-
     This error is thrown instead of overwriting an existing file.
     """
     def __init__(self, value):
         self.value = value
-    def __str__(self) :
+    def __str__(self):
         return repr(self.value)
 
-if __name__ == '__main__':
-    thing = SafeMove()
-    thing.move("this.txt","that.txt")
+class SourceDoesNotExistError(Exception):
+    """Source Does Not Exist
+    This error is thrown when there is no file to be moved.
+    """
+    def __init__(self, value):
+        self.value = value
+    def __str__(self):
+        return repr(self.value)
+
+
+# In case this is run on the command line, which is useful for tests.
+if __name__ == "__main__":
+    this = SafeMove()
+    # Call move() with all command line arguments, but not the script name.
+    this.move(*sys.argv[1:])
