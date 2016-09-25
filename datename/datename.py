@@ -1,122 +1,82 @@
 #!/usr/bin/env python
-"""
-File: datename.py
-Author: tekemperor
-Purpose: Rename a file based on its filesystem timestamp attributes.
+"""Rename a file based on its filesystem timestamp attributes.
 
+Author: Brian Lindsay
+Author Email: tekemperor@gmail.com
 """
+
 import sys
-import getopt
 import os
-import datetime
-import time
+import filetime
 import safemove
+import argparse
 
-def usage():
-    print "Usage:"
-    print "datename [-hcmapr] [-f <format>] <file> ..."
-    print "	-h		help (this)"
-    print "	-c		creation time"
-    print "	-m		modified time (default)"
-    print "	-a		accessed time"
-    print "	-p		prefix filename"
-    print "	-R		rename file (default)"
-    print "	-u		use UTC (default)"
-    print "	-l		use local time instead of UTC."
-    print "	-f <format>	strftime format date (default is '%Y%m%dT%H%M%S%Z')"
-    print "			Note: %Z and %z cannot be escaped."
+def main():
+    """Handle interation.
+    
+    Parses arguments and stuff.
+    """
+    parser = argparse.ArgumentParser(description="Rename files by date")
+    parser.add_argument('-d','--destination')
+    parser.add_argument('files', nargs='*')
+    arguments = parser.parse_args()
+    datename(arguments.files, arguments.destination)
 
-def main ():
-    # Defaults
-    attribute = "-m"
-    style = "-R"
-    formatString = '%Y%m%dT%H%M%S%Z'
-    utc = "-u"
-    # Options
-    a, s, f, l, u = getOptions(sys.argv, attribute, style, formatString, utc)
-    attribute = a
-    style = s
-    formatString = f
-    files = l
-    utc = u
-    # Iterate
-    for path in files:
-        rename(path, style, getTimeString(formatString, utc, path, attribute))
 
-def getOptions(argv, attribute, style, formatString, utc):
-    try:
-        opts, fileList = getopt.getopt(argv[1:],"hcmapRful:",["help"])
-    except getopt.GetoptError as err:
-        print str(err)
-        usage()
-        sys.exit(2)
-    for o, a in opts:
-        if o in ("-h", "--help"):
-            usage()
-            sys.exit()
-        elif o in ("-c", "-m", "-a"):
-            attribute = o
-        elif o in ("-p", "-R"):
-            style = o
-        elif o == "-f":
-            formatString = a
-        elif o in ("-u", "-l"):
-            utc = o
-        else:
-            print "The programmer seems to have neglected to correctly map this option."
-            print "Option: " + str(o)
-            print "Please alert the programmer to his negligence."
-            sys.exit()
-    return attribute, style, formatString, fileList, utc
+def datename(files, destination=None):
+    """Rename files based on their modifiation timestamps
+   
+    Files will be renamed to an ISO 8601 compliant UTC time string.
+    """
+    if not destination == None:
+        for file_path in files:
+            __organize(file_path, destination)
+    else:
+        for file_path in files:
+            time_string = filetime.filetime(file_path)
+            __rename(file_path, time_string)
 
-def getTimeObj(path, attribute, utc):
-    timestamp = time.mktime(datetime.datetime.now().timetuple())
-    if attribute == "-m":
-        timestamp = os.path.getmtime(path)
-    elif attribute == "-c":
-        timestamp = os.path.getctime(path)
-    elif attribute == "-a":
-        timestamp = os.path.getatime(path)
-    timeObj = datetime.datetime.utcfromtimestamp(timestamp)
-    if utc == "-l":
-        timeObj = datetime.datetime.fromtimestamp(timestamp)
-    return timeObj
 
-def getTimeZone(utc):
-    if utc == "-l":
-        return time.strftime('%Z')
-    # UTC aka Zulu time following ISO 8601 (e.g. 12:00:00Z)
-    return "Z"
+def __organize(file_path, destination_root):
+    """Organize files into iso 8601 format.
+    
+    Files will be in destination_root/<year>/<year>-<month>/<timestring>.<ext>
+    If a file exists in the destination location, an iterator will be added.
+    Gets time string from filetime.
+    Parses year from first 4 characters.
+    Parses month from next 2 characters.
+    """
+    time_string = filetime.filetime(file_path)
+    year = time_string[0:4]
+    month = time_string[4:6]
+    year_month = year + "-" + month
+    full_file_name = os.path.basename(file_path)
+    file_name_part, file_extension = os.path.splitext(full_file_name)
+    new_file_name = time_string + file_extension.lower()
+    destination = os.path.join(
+        destination_root,
+        year,
+        year_month,
+        new_file_name
+        )
+    safemove.move(file_path, destination)
 
-def getTimeOffset(utc):
-    if utc == "-l":
-        return time.strftime('%z')
-    return "+0000"
 
-def fixFormat(formatString, utc):
-    formatString = formatString.replace('%Z', getTimeZone(utc))
-    formatString = formatString.replace('%z', getTimeOffset(utc))
-    formatString = formatString.replace('+','_')
-    formatString = formatString.replace(':','')
-    return formatString
+def __rename(file_path, new_name):
+    """Rename file with same extension.
 
-def getTimeString(formatString, utc, path, attribute):
-    formatString = fixFormat(formatString, utc)
-    timeObj = getTimeObj(path, attribute, utc)
-    timeString = timeObj.strftime(formatString)
-    return timeString
+    Given the full path of a file, this function will replace only the name.
+    The directory and extension will remain the same.
+    In case of existing file at destination, this will iterate until free.
+    """
+    directory = os.path.dirname(file_path)
+    full_file_name = os.path.basename(file_path)
+    file_name_part, file_extension = os.path.splitext(full_file_name)
+    new_file_name = new_name + file_extension.lower()
+    destination = os.path.join(directory, new_file_name)
+    safemove.move(file_path, destination)
 
-def rename(pathFull, style, timeString):
-    if not os.path.isfile(pathFull):
-        return
-    pathDir = os.path.dirname(pathFull)
-    pathFile = os.path.basename(pathFull)
-    fileName, fileExt = os.path.splitext(pathFile)
-    fileSuffix = "_" + fileName + fileExt
-    if style == "-R":
-        fileSuffix = fileExt
-    tempPath = os.path.join(pathDir, timeString + fileSuffix)
-    safemove.move(pathFull, tempPath)
 
+# This script is meant to be called from the command line.
 if __name__ == "__main__":
     main()
